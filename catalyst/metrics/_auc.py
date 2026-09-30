@@ -188,9 +188,9 @@ class AUCMetric(ICallbackLoaderMetric):
         )
         per_class = auc(scores=scores, targets=targets)
         micro = binary_auc(scores=scores.view(-1), targets=targets.view(-1))[0]
-        macro = per_class.mean().item()
+        macro = torch.nanmean(per_class).item()
         weights = targets.sum(axis=0) / len(targets)
-        weighted = (per_class * weights).sum().item()
+        weighted = torch.nansum(per_class * weights).item()
         if self.compute_per_class_metrics:
             return per_class, micro, macro, weighted
         else:

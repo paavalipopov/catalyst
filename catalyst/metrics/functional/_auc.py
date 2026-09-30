@@ -61,6 +61,12 @@ def binary_auc(
     """
     targets = targets.numpy()
 
+    # a one-class column has no tpr or no fpr to normalise by, so its auc is undefined;
+    # return nan up front rather than divide by zero below
+    if targets.sum() in (0, targets.size):
+        curve = np.zeros(shape=(targets.size + 1), dtype=np.float64)
+        return float("nan"), curve, curve.copy()
+
     # sorting the arrays
     scores, sortind = torch.sort(scores, dim=0, descending=True)
     scores = scores.numpy()
