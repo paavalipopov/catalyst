@@ -8,14 +8,9 @@ import torch
 
 from catalyst.core.callback import ICheckpointCallback
 from catalyst.core.runner import IRunner
-from catalyst.utils import (
-    load_checkpoint,
-    pack_checkpoint,
-    save_checkpoint,
-    unpack_checkpoint,
-)
+from catalyst.utils import load_checkpoint, pack_checkpoint, unpack_checkpoint, save_checkpoint
 
-Checkpoint = namedtuple("Checkpoint", field_names=["obj", "logpath", "metric"])
+Checkpoint = namedtuple("Checkpoint", field_names=["logpath", "metric"])
 
 
 class CheckpointCallback(ICheckpointCallback):
@@ -90,13 +85,34 @@ class CheckpointCallback(ICheckpointCallback):
             elif isinstance(obj, dict):
                 # obj = dict(model=obj)  # noqa: C408
                 checkpoint = pack_checkpoint(model=obj)
-                save_checkpoint(checkpoint, logpath)
+                runner.engine.wait_for_everyone()
+                # engine.save writes on the main process only; a plain torch.save here
+                # let every DDP rank write the same path at the same time.
+                runner.engine.save(checkpoint, logpath)
             else:
                 raise NotImplementedError()
         else:
+            # pack_checkpoint unwraps DDP/DataParallel modules via get_nn_from_ddp_module
             checkpoint = pack_checkpoint(**obj)
-            save_checkpoint(checkpoint, logpath)
+            runner.engine.wait_for_everyone()
+            runner.engine.save(checkpoint, logpath)
         return logpath
+
+    def _publish_best(self, runner: "IRunner") -> str:
+        if not self._storage:
+            return None
+        srcpath = self._storage[0].logpath
+        dstpath = f"{self.logdir}/{self.mode}.best.pth"
+
+        # Every rank reaches both barriers; only the main process touches the file.
+        runner.engine.wait_for_everyone()
+        if runner.engine.is_main_process and os.path.isfile(srcpath) and \
+           os.path.abspath(srcpath) != os.path.abspath(dstpath):
+            tmppath = f"{dstpath}.tmp"
+            shutil.copyfile(srcpath, tmppath)
+            os.replace(tmppath, dstpath)
+        runner.engine.wait_for_everyone()
+        return dstpath
 
     def _load(
         self,
@@ -159,7 +175,7 @@ class CheckpointCallback(ICheckpointCallback):
 
         logprefix = f"{self.logdir}/{self.mode}.{runner.epoch_step:04d}"
         logpath = self._save(runner, obj, logprefix)
-        self._storage.append(Checkpoint(obj=obj, logpath=logpath, metric=score))
+        self._storage.append(Checkpoint(logpath=logpath, metric=score))
         self._storage = sorted(
             self._storage, key=lambda x: x.metric, reverse=not self._minimize
         )
@@ -208,8 +224,7 @@ class CheckpointCallback(ICheckpointCallback):
         self._handle_epoch(runner=runner, score=score)
 
         if self.save_best:
-            best_logprefix = f"{self.logdir}/{self.mode}.best"
-            self._save(runner, self._storage[0].obj, best_logprefix)
+            self._publish_best(runner)
 
     def on_epoch_end_last(self, runner: "IRunner") -> None:
         """Event handler."""
