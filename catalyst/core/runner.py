@@ -335,21 +335,12 @@ class IRunner(ICallback, ILogger, ABC):
 
     def on_loader_end(self, runner: "IRunner"):
         """Event handler."""
-        # --- PATCH START: Auto-Reduce DDP Metrics ---
         if self.engine.is_ddp:
-            # This safely reduces all floats in loader_metrics across GPUs
-            # It returns a dict of tensors, so we must cast back to item() if needed later
-            reduced_metrics = self.engine.mean_reduce_ddp_metrics(self.loader_metrics)
-            
-            # Update the loader_metrics in place with the reduced values
-            # .item() is usually needed because mean_reduce returns 0-d tensors
-            for k, v in reduced_metrics.items():
-                if isinstance(v, torch.Tensor):
-                    self.loader_metrics[k] = v.item()
-                else:
-                    self.loader_metrics[k] = v
-        # --- PATCH END ---
-        
+            # loader metrics are per-rank up to here, so average them over ranks;
+            # each key is a collective call, so every rank must hold the same keys
+            metrics = {k: float(v) for k, v in self.loader_metrics.items()}
+            metrics = self.engine.mean_reduce_ddp_metrics(metrics)
+            self.loader_metrics.update({k: float(v) for k, v in metrics.items()})
         self.log_metrics(metrics=self.loader_metrics, scope="loader")
         self.epoch_metrics[self.loader_key] = {
             key: float(value) for key, value in self.loader_metrics.items()

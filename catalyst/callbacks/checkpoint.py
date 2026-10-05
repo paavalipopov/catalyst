@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from collections import namedtuple
 import json
 import os
@@ -8,9 +8,19 @@ import torch
 
 from catalyst.core.callback import ICheckpointCallback
 from catalyst.core.runner import IRunner
-from catalyst.utils import load_checkpoint, pack_checkpoint, unpack_checkpoint, save_checkpoint
+from catalyst.utils import load_checkpoint, pack_checkpoint, unpack_checkpoint
 
 Checkpoint = namedtuple("Checkpoint", field_names=["logpath", "metric"])
+
+
+def _remove_checkpoint(logpath: str) -> None:
+    if os.path.isfile(logpath):
+        try:
+            os.remove(logpath)
+        except OSError:
+            pass
+    elif os.path.isdir(logpath):
+        shutil.rmtree(logpath, ignore_errors=True)
 
 
 class CheckpointCallback(ICheckpointCallback):
@@ -98,16 +108,18 @@ class CheckpointCallback(ICheckpointCallback):
             runner.engine.save(checkpoint, logpath)
         return logpath
 
-    def _publish_best(self, runner: "IRunner") -> str:
+    def _publish_best(self, runner: "IRunner") -> Optional[str]:
         if not self._storage:
             return None
         srcpath = self._storage[0].logpath
         dstpath = f"{self.logdir}/{self.mode}.best.pth"
+        is_copy_needed = os.path.isfile(srcpath) and (
+            os.path.abspath(srcpath) != os.path.abspath(dstpath)
+        )
 
-        # Every rank reaches both barriers; only the main process touches the file.
+        # every rank reaches both barriers; only the main process touches the file
         runner.engine.wait_for_everyone()
-        if runner.engine.is_main_process and os.path.isfile(srcpath) and \
-           os.path.abspath(srcpath) != os.path.abspath(dstpath):
+        if runner.engine.is_main_process and is_copy_needed:
             tmppath = f"{dstpath}.tmp"
             shutil.copyfile(srcpath, tmppath)
             os.replace(tmppath, dstpath)
@@ -181,13 +193,13 @@ class CheckpointCallback(ICheckpointCallback):
         )
         if len(self._storage) > self.topk:
             last_item = self._storage.pop(-1)
-            if os.path.isfile(last_item.logpath):
-                try:
-                    os.remove(last_item.logpath)
-                except OSError:
-                    pass
-            elif os.path.isdir(last_item.logpath):
-                shutil.rmtree(last_item.logpath, ignore_errors=True)
+            # checkpoints are written by the main process, so only it removes them
+            if runner.engine.is_main_process:
+                _remove_checkpoint(last_item.logpath)
+        if runner.engine.is_main_process:
+            self._dump_storage()
+
+    def _dump_storage(self) -> None:
         with open(f"{self.logdir}/{self.mode}.storage.json", "w") as fout:
             stats = {
                 "logdir": str(self.logdir),
