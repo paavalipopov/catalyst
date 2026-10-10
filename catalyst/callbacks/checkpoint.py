@@ -13,16 +13,6 @@ from catalyst.utils import load_checkpoint, pack_checkpoint, unpack_checkpoint
 Checkpoint = namedtuple("Checkpoint", field_names=["logpath", "metric"])
 
 
-def _remove_checkpoint(logpath: str) -> None:
-    if os.path.isfile(logpath):
-        try:
-            os.remove(logpath)
-        except OSError:
-            pass
-    elif os.path.isdir(logpath):
-        shutil.rmtree(logpath, ignore_errors=True)
-
-
 class CheckpointCallback(ICheckpointCallback):
     """Checkpoint callback to save/restore your model/runner.
 
@@ -194,8 +184,11 @@ class CheckpointCallback(ICheckpointCallback):
         if len(self._storage) > self.topk:
             last_item = self._storage.pop(-1)
             # checkpoints are written by the main process, so only it removes them
-            if runner.engine.is_main_process:
-                _remove_checkpoint(last_item.logpath)
+            if runner.engine.is_main_process and os.path.isfile(last_item.logpath):
+                try:
+                    os.remove(last_item.logpath)
+                except OSError:
+                    pass
         if runner.engine.is_main_process:
             self._dump_storage()
 
