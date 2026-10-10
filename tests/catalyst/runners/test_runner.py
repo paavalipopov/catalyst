@@ -177,3 +177,44 @@ def test_epoch_increasing():
     )
 
     shutil.rmtree(logdir, ignore_errors=True)
+
+
+class LoaderRoleCallback(Callback):
+    """Records the loader flags and train/grad modes seen by each loader."""
+
+    def __init__(self):
+        super().__init__(CallbackOrder.Internal)
+        self.roles = {}
+
+    def on_batch_end(self, runner):
+        self.roles[runner.loader_key] = (
+            runner.is_train_loader,
+            runner.is_valid_loader,
+            runner.is_infer_loader,
+            runner.model.training,
+            torch.is_grad_enabled(),
+        )
+
+
+def test_loader_key_roles() -> None:
+    """
+    Loader keys not starting with "train" or "valid" run as inference loaders.
+    """
+    dataset = DummyDataset()
+    model = nn.Linear(in_features=dataset.features_dim, out_features=dataset.out_dim)
+    loader = DataLoader(dataset=dataset, batch_size=2)
+    callback = LoaderRoleCallback()
+    runner = SupervisedRunner()
+    runner.train(
+        loaders={"train": loader, "valid": loader, "infer": loader, "test": loader},
+        model=model,
+        num_epochs=1,
+        criterion=nn.MSELoss(),
+        optimizer=torch.optim.SGD(model.parameters(), lr=0.1),
+        callbacks=[callback],
+    )
+    assert callback.roles["train"] == (True, False, False, True, True)
+    assert callback.roles["valid"] == (False, True, False, False, False)
+    assert callback.roles["infer"] == (False, False, True, False, False)
+    assert callback.roles["test"] == (False, False, True, False, False)
+    assert "loss" in runner.epoch_metrics["test"]

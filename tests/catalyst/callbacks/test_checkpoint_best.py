@@ -13,6 +13,7 @@ import copy
 import os
 
 import pytest
+
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -26,7 +27,9 @@ BEST_EPOCH = 2
 class _ScriptedRunner(dl.Runner):
     """Trains a tiny model and forces a known validation-loss trajectory."""
 
-    def __init__(self, logdir, mode="model", topk=1, save_last=True, load_best_on_end=False):
+    def __init__(
+        self, logdir, mode="model", topk=1, save_last=True, load_best_on_end=False
+    ):
         super().__init__()
         self._logdir = logdir
         self._mode = mode
@@ -92,7 +95,7 @@ class _ScriptedRunner(dl.Runner):
         if self.loader_key == "valid":
             self.loader_metrics["loss"] = SCRIPT[self.epoch_step - 1]
         else:
-            self.loader_metrics["loss"] = float(self.batch_metrics["loss"])
+            self.loader_metrics["loss"] = float(self.batch_metrics["loss"].detach())
         super().on_loader_end(runner)
 
     def on_epoch_end(self, runner):
@@ -106,7 +109,9 @@ def _weights(path, mode):
 
 
 def _same(left, right):
-    return left.keys() == right.keys() and all(torch.equal(left[k], right[k]) for k in left)
+    return left.keys() == right.keys() and all(
+        torch.equal(left[k], right[k]) for k in left
+    )
 
 
 @pytest.mark.parametrize(
@@ -114,22 +119,30 @@ def _same(left, right):
     [("model", 1, True), ("model", 3, True), ("model", 1, False), ("runner", 1, True)],
 )
 def test_best_checkpoint_holds_best_epoch(tmp_path, mode, topk, save_last):
+    """``{mode}.best.pth`` holds the best epoch's weights, not the last ones."""
     runner = _ScriptedRunner(str(tmp_path), mode=mode, topk=topk, save_last=save_last)
     runner.run()
 
     best = _weights(os.path.join(str(tmp_path), f"{mode}.best.pth"), mode)
-    assert _same(best, runner.snapshots[BEST_EPOCH]), "best.pth is not the best epoch's weights"
-    assert not _same(best, runner.snapshots[len(SCRIPT)]), "best.pth drifted to the last epoch"
+    assert _same(
+        best, runner.snapshots[BEST_EPOCH]
+    ), "best.pth is not the best epoch's weights"
+    assert not _same(
+        best, runner.snapshots[len(SCRIPT)]
+    ), "best.pth drifted to the last epoch"
 
     kept = sorted(f for f in os.listdir(str(tmp_path)) if f.startswith(f"{mode}.0"))
     assert len(kept) == topk, f"expected {topk} per-epoch checkpoint(s), found {kept}"
 
     if save_last:
         last = _weights(os.path.join(str(tmp_path), f"{mode}.last.pth"), mode)
-        assert _same(last, runner.snapshots[len(SCRIPT)]), "last.pth is not the final weights"
+        assert _same(
+            last, runner.snapshots[len(SCRIPT)]
+        ), "last.pth is not the final weights"
 
 
 def test_load_best_on_end_restores_best_epoch(tmp_path):
+    """``load_best_on_end`` restores the best epoch's weights."""
     runner = _ScriptedRunner(str(tmp_path), load_best_on_end=True)
     runner.run()
     assert _same(runner.model.state_dict(), runner.snapshots[BEST_EPOCH])

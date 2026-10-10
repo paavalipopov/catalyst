@@ -10,9 +10,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - `catalyst-tune` for Config API added [#1411](https://github.com/catalyst-team/catalyst/pull/1411)
 
+- DDP: `runner.loader_metrics` are averaged over processes at loader end, so every rank logs and selects checkpoints by the same values [#2](https://github.com/neuroneural/catalyst/pull/2)
+
+- CPU (gloo) DDP test for loader-metric reduction and checkpointing [#2](https://github.com/neuroneural/catalyst/pull/2)
+
 ### Changed
 
--
+- Loader keys that start with neither "train" nor "valid" run as inference loaders instead of failing an assertion [#2](https://github.com/neuroneural/catalyst/pull/2)
+
+- `CheckpointCallback` storage no longer holds the model (`Checkpoint.obj` removed); checkpoint pruning and `{mode}.storage.json` are handled by the main process only [#2](https://github.com/neuroneural/catalyst/pull/2)
 
 ### Removed
 
@@ -20,7 +26,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
--
+- `CheckpointCallback` saved the current weights as `{mode}.best.pth` every epoch; the file is now a copy of the best epoch's checkpoint [#2](https://github.com/neuroneural/catalyst/pull/2)
+
+- `CheckpointCallback` wrote `runner`-mode and dict-model checkpoints from every DDP process [#2](https://github.com/neuroneural/catalyst/pull/2)
+
+- `AUCMetric` macro and weighted AUC were `nan` whenever a class was absent from the loader; classes with undefined AUC are now skipped [#2](https://github.com/neuroneural/catalyst/pull/2)
+
+- `binary_auc` no longer emits a numpy `RuntimeWarning` for single-class targets [#2](https://github.com/neuroneural/catalyst/pull/2)
 
 
 ## [22.02.1] - 2022-02-27

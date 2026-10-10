@@ -121,7 +121,7 @@ Catalyst uses the following "automatic naming documentation" for loader keys han
 
 - if ``loader_key`` starts with "train" - is's train datasoure, we need to run forward and backward passes on it.
 - if ``loader_key`` starts with "valid" - is's validation datasoure, we need to run forward, but not the backward pass on it.
-- if ``loader_key`` starts with "infer" - is's inference datasoure, we need to run forward, but not the backward pass on it.
+- any other ``loader_key`` (for example, "infer" or "test") - is's inference datasoure, we need to run forward, but not the backward pass on it.
 
 Multiple datasources
 ----------------------------------------------------
