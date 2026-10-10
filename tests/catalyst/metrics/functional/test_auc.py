@@ -1,12 +1,9 @@
 # flake8: noqa
 import math
-import warnings
-
-import numpy as np
 
 import torch
 
-from catalyst.metrics.functional._auc import auc, binary_auc
+from catalyst.metrics.functional._auc import auc
 
 
 def test_auc():
@@ -43,20 +40,3 @@ def test_auc():
 
     val = auc(scores, targets)
     assert math.fabs(val - 1.0) < 0.0001, "AUC test2 failed"
-
-
-def test_binary_auc_single_class() -> None:
-    """
-    A single-class target column has an undefined (nan) AUC and raises no warning.
-    """
-    scores = torch.tensor([0.9, 0.2, 0.7, 0.4])
-    for targets in (torch.zeros(4), torch.ones(4)):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            value, _, _ = binary_auc(scores, targets)
-        assert math.isnan(value)
-
-    # the defined half of the curve is still returned
-    _, tpr, fpr = binary_auc(scores, torch.zeros(4))
-    assert np.isnan(tpr).all()
-    assert np.allclose(fpr, [0.0, 0.25, 0.5, 0.75, 1.0])

@@ -78,10 +78,8 @@ def binary_auc(
             tpr[i] = tpr[i - 1]
             fpr[i] = fpr[i - 1] + 1
 
-    # a single-class column leaves tpr or fpr undefined (0 / 0), so its auc is nan
-    with np.errstate(divide="ignore", invalid="ignore"):
-        tpr /= targets.sum() * 1.0
-        fpr /= (targets - 1.0).sum() * -1.0
+    tpr /= targets.sum() * 1.0
+    fpr /= (targets - 1.0).sum() * -1.0
 
     # calculating area under curve using trapezoidal rule
     n = tpr.shape[0]

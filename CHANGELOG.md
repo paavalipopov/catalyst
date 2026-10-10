@@ -30,10 +30,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - `CheckpointCallback` wrote `runner`-mode and dict-model checkpoints from every DDP process [#2](https://github.com/neuroneural/catalyst/pull/2)
 
-- `AUCMetric` macro and weighted AUC were `nan` whenever a class was absent from the loader; classes with undefined AUC are now skipped [#2](https://github.com/neuroneural/catalyst/pull/2)
-
-- `binary_auc` no longer emits a numpy `RuntimeWarning` for single-class targets [#2](https://github.com/neuroneural/catalyst/pull/2)
-
 
 ## [22.02.1] - 2022-02-27
 
