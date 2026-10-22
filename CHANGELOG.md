@@ -8,11 +8,30 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- `catalyst-tune` for Config API added [#1411](https://github.com/catalyst-team/catalyst/pull/1411)
+-
+
+### Changed
+
+-
+
+### Removed
+
+-
+
+### Fixed
+
+-
+
+
+## [22.04.1] - 2026-10-22
+
+### Added
 
 - DDP: `runner.loader_metrics` are averaged over processes at loader end, so every rank logs and selects checkpoints by the same values [#2](https://github.com/neuroneural/catalyst/pull/2)
 
 - CPU (gloo) DDP test for loader-metric reduction and checkpointing [#2](https://github.com/neuroneural/catalyst/pull/2)
+
+- `examples/notebooks/XLA_smoke.ipynb`: Colab TPU smoke test (single device, multi-process, checkpoints, ResNet9 on CIFAR10)
 
 ### Changed
 
@@ -41,6 +60,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Loader wrappers (`BatchLimitLoaderWrapper`, `BatchPrefetchLoaderWrapper`, used by `overfit=True`) returned `None` for the wrapped loader's attributes with accelerate>=0.34
 
 - `DistributedXLAEngine` passes `nprocs=None` to `xmp.spawn`, since torch_xla 2.9 rejects `nprocs=8`
+
+
+## [22.04] - 2022-04-29
+
+### Added
+
+- `catalyst-tune` for Config API added [#1411](https://github.com/catalyst-team/catalyst/pull/1411)
 
 
 ## [22.02.1] - 2022-02-27
