@@ -85,7 +85,7 @@ class Engine(Accelerator):
                 )
                 for k, v in metrics.items()
             }
-        elif self.state.distributed_type == DistributedType.TPU:
+        elif self.state.distributed_type in ("TPU", "XLA"):  # XLA since accelerate 0.28
             metrics = {
                 k: xm.mesh_reduce(
                     k, v.item() if isinstance(v, torch.Tensor) else v, np.mean

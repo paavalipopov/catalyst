@@ -4,7 +4,6 @@ import json
 import os
 import shutil
 
-from accelerate.state import DistributedType
 import torch
 
 from catalyst import SETTINGS
@@ -95,7 +94,7 @@ class CheckpointCallback(ICheckpointCallback):
         else:
             # pack_checkpoint unwraps DDP/DataParallel modules via get_nn_from_ddp_module
             checkpoint = pack_checkpoint(**obj)
-        if runner.engine.distributed_type == DistributedType.TPU:
+        if runner.engine.distributed_type in ("TPU", "XLA"):  # XLA since accelerate 0.28
             # XLA save is collective: all ranks participate, only global rank 0 writes.
             xm.save(checkpoint, logpath, master_only=True, global_master=True)
         elif runner.engine.is_main_process:

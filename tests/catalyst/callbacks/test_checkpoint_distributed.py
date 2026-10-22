@@ -81,7 +81,7 @@ def test_xla_checkpoint_save_remains_collective(tmp_path, monkeypatch, kind):
         monkeypatch.setattr(
             checkpoint_module, "xm", SimpleNamespace(save=save), raising=False
         )
-        engine = _engine(rank, writes, DistributedType.TPU)
+        engine = _engine(rank, writes, "XLA")  # TPU before accelerate 0.28
         callback._save(
             SimpleNamespace(engine=engine),
             _checkpoint_object(kind, rank),

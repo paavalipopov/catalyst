@@ -100,9 +100,13 @@ class AUCCallback(LoaderMetricCallback):
 
     def on_experiment_start(self, runner: "IRunner") -> None:
         """Event handler."""
-        assert (
-            not runner.engine.use_fp16
-        ), "AUCCallback could not work within amp training"
+        # accelerate 1.0 removed use_fp16; 0.5 has no mixed_precision
+        mixed_precision = getattr(runner.engine, "mixed_precision", None)
+        if mixed_precision is None:
+            is_amp = runner.engine.use_fp16
+        else:
+            is_amp = mixed_precision != "no"
+        assert not is_amp, "AUCCallback could not work within amp training"
         return super().on_experiment_start(runner)
 
 

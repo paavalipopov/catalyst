@@ -175,7 +175,8 @@ class CMCScoreCallback(LoaderMetricCallback):
         """Event handler."""
         assert runner.engine.distributed_type not in (
             DistributedType.MULTI_GPU,
-            DistributedType.TPU,
+            "TPU",  # XLA since accelerate 0.28
+            "XLA",
         ), "CMCScoreCallback could not work within ddp training"
         return super().on_experiment_start(runner)
 
@@ -227,7 +228,8 @@ class ReidCMCScoreCallback(LoaderMetricCallback):
         """Event handler."""
         assert runner.engine.distributed_type not in (
             DistributedType.MULTI_GPU,
-            DistributedType.TPU,
+            "TPU",  # XLA since accelerate 0.28
+            "XLA",
         ), "ReidCMCScoreCallback could not work within ddp training"
         return super().on_experiment_start(runner)
 

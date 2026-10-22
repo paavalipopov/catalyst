@@ -82,6 +82,7 @@ def get_device() -> torch.device:
     """Simple returning the best available device (TPU > GPU > CPU)."""
     device = torch.device("cpu")
     if SETTINGS.xla_required:
+        # TPU: xm.xla_device is deprecated since torch_xla 2.5 (torch_xla.device)
         device = xm.xla_device()
     elif torch.cuda.is_available():
         device = torch.device("cuda")

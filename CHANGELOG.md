@@ -34,6 +34,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - `CheckpointCallback` wrote `runner`-mode and dict-model checkpoints from every DDP process [#2](https://github.com/neuroneural/catalyst/pull/2)
 
+- `AttributeError: TPU` with accelerate>=1.0, which removed `DistributedType.TPU` (renamed `XLA` in 0.28); both names are now matched as strings
+
+- `AUCCallback` crashed with accelerate>=1.0, which removed `Accelerator.use_fp16`; it now checks `mixed_precision`
+
+- Loader wrappers (`BatchLimitLoaderWrapper`, `BatchPrefetchLoaderWrapper`, used by `overfit=True`) returned `None` for the wrapped loader's attributes with accelerate>=0.34
+
+- `DistributedXLAEngine` passes `nprocs=None` to `xmp.spawn`, since torch_xla 2.9 rejects `nprocs=8`
+
 
 ## [22.02.1] - 2022-02-27
 

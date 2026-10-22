@@ -43,7 +43,8 @@ class ILoaderWrapper(DataLoader):
         # value = getattr(self, key, None)
         if value != some_default_value:
             return value
-        return None
+        # accelerate>=0.34 loaders proxy their attributes instead of storing them
+        return getattr(self.origin, key, None)
 
     def __len__(self) -> int:
         """Returns length of the wrapper loader.

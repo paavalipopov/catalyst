@@ -19,6 +19,8 @@ def _is_torch_distributed_initialized() -> bool:
 
 
 def _is_xla_distributed_initialized() -> bool:
+    # TPU: xenv.TORCH_DIST_ROOT is gone in torch_xla>=2.1 (PJRT), so this raises
+    # AttributeError on TPU; a fix needs torch_xla.runtime and a TPU to test on
     return (
         SETTINGS.xla_required and os.environ.get(xenv.TORCH_DIST_ROOT, None) is not None
     )
@@ -89,6 +91,7 @@ def get_rank() -> int:
         int: ``rank`` if torch.distributed is initialized, otherwise ``-1``
     """
     if _is_xla_distributed_initialized():
+        # TPU: xm.get_ordinal was removed in torch_xla 2.9 (see torch_xla.runtime)
         return xm.get_ordinal()
     elif _is_torch_distributed_initialized():
         return dist.get_rank()
@@ -103,6 +106,7 @@ def get_rank() -> int:
 def get_world_size() -> int:
     """Returns the world size for distributed training."""
     if _is_xla_distributed_initialized():
+        # TPU: xm.xrt_world_size was removed in torch_xla 2.9 (see torch_xla.runtime)
         return xm.xrt_world_size()
     elif _is_torch_distributed_initialized():
         return dist.get_world_size()
