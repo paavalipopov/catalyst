@@ -61,6 +61,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - `DistributedXLAEngine` passes `nprocs=None` to `xmp.spawn`, since torch_xla 2.9 rejects `nprocs=8`
 
+- `AttributeError: 'MpDeviceLoaderWrapper' object has no attribute 'batch_size'` on TPU with accelerate>=0.11; the runner now reads loader attributes from the wrapped loader
+
+- `catalyst.utils.distributed` (`get_backend`, `get_rank`, `get_world_size`) crashed on torch_xla>=2.1 (PJRT), breaking AUC, precision/recall/F1, confusion matrix and segmentation metrics on TPU; it now uses `torch_xla.runtime`
+
 
 ## [22.04] - 2022-04-29
 

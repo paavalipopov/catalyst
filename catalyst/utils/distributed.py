@@ -12,6 +12,11 @@ if SETTINGS.xla_required:
     import torch_xla.core.xla_env_vars as xenv
     import torch_xla.core.xla_model as xm
 
+    # torch_xla<2.1 (XRT) marks spawned processes with TORCH_DIST_ROOT
+    _IS_XRT = hasattr(xenv, "TORCH_DIST_ROOT")
+    if not _IS_XRT:
+        import torch_xla.runtime as xr
+
 
 def _is_torch_distributed_initialized() -> bool:
     """Checks if torch.distributed is available and initialized."""
@@ -19,11 +24,12 @@ def _is_torch_distributed_initialized() -> bool:
 
 
 def _is_xla_distributed_initialized() -> bool:
-    # TPU: xenv.TORCH_DIST_ROOT is gone in torch_xla>=2.1 (PJRT), so this raises
-    # AttributeError on TPU; a fix needs torch_xla.runtime and a TPU to test on
-    return (
-        SETTINGS.xla_required and os.environ.get(xenv.TORCH_DIST_ROOT, None) is not None
-    )
+    if not SETTINGS.xla_required:
+        return False
+    if _IS_XRT:
+        return os.environ.get(xenv.TORCH_DIST_ROOT, None) is not None
+    # xmp.spawn sets it, so other processes never start the XLA runtime here
+    return xenv.PJRT_LOCAL_PROCESS_COUNT in os.environ and xr.world_size() > 1
 
 
 def _is_ddp_wrapped(model: nn.Module) -> bool:
@@ -91,8 +97,7 @@ def get_rank() -> int:
         int: ``rank`` if torch.distributed is initialized, otherwise ``-1``
     """
     if _is_xla_distributed_initialized():
-        # TPU: xm.get_ordinal was removed in torch_xla 2.9 (see torch_xla.runtime)
-        return xm.get_ordinal()
+        return xm.get_ordinal() if _IS_XRT else xr.global_ordinal()
     elif _is_torch_distributed_initialized():
         return dist.get_rank()
     else:
@@ -106,8 +111,7 @@ def get_rank() -> int:
 def get_world_size() -> int:
     """Returns the world size for distributed training."""
     if _is_xla_distributed_initialized():
-        # TPU: xm.xrt_world_size was removed in torch_xla 2.9 (see torch_xla.runtime)
-        return xm.xrt_world_size()
+        return xm.xrt_world_size() if _IS_XRT else xr.world_size()
     elif _is_torch_distributed_initialized():
         return dist.get_world_size()
     else:

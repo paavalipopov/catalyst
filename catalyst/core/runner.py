@@ -298,9 +298,12 @@ class IRunner(ICallback, ILogger, ABC):
         self.is_valid_loader: bool = self.loader_key.startswith("valid")
         # Anything that is not train or valid is inference
         self.is_infer_loader: bool = not (self.is_train_loader or self.is_valid_loader)
-        self.loader_batch_size: int = get_loader_batch_size(self.loader)
+        # accelerate's TPU loader wrapper hides the loader attributes
+        inner_loader = getattr(self.loader, "_loader", None)
+        loader = self.loader if inner_loader is None else inner_loader
+        self.loader_batch_size: int = get_loader_batch_size(loader)
         self.loader_batch_len: int = len(self.loader)
-        self.loader_sample_len: int = get_loader_num_samples(self.loader)
+        self.loader_sample_len: int = get_loader_num_samples(loader)
         self.loader_batch_step: int = 0
         self.loader_sample_step: int = 0
         self.loader_metrics: Dict = defaultdict(None)
@@ -310,8 +313,8 @@ class IRunner(ICallback, ILogger, ABC):
         set_global_seed(self.seed + max(0, self.engine.process_index) + self.epoch_step)
 
         maybe_recursive_call(self.model, "train", mode=self.is_train_loader)
-        if isinstance(self.loader.sampler, DistributedSampler):
-            self.loader.sampler.set_epoch(self.epoch_step)
+        if isinstance(loader.sampler, DistributedSampler):
+            loader.sampler.set_epoch(self.epoch_step)
 
     def on_batch_start(self, runner: "IRunner"):
         """Event handler."""
