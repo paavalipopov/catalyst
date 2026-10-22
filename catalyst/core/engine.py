@@ -86,11 +86,9 @@ class Engine(Accelerator):
                 for k, v in metrics.items()
             }
         elif self.state.distributed_type in ("TPU", "XLA"):  # XLA since accelerate 0.28
+            # mesh_reduce pickles values; torch>=2.6 loads back only plain types
             metrics = {
-                k: xm.mesh_reduce(
-                    k, v.item() if isinstance(v, torch.Tensor) else v, np.mean
-                )
-                for k, v in metrics.items()
+                k: xm.mesh_reduce(k, float(v), np.mean) for k, v in metrics.items()
             }
         return metrics
 

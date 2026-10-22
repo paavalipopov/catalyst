@@ -65,6 +65,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - `catalyst.utils.distributed` (`get_backend`, `get_rank`, `get_world_size`) crashed on torch_xla>=2.1 (PJRT), breaking AUC, precision/recall/F1, confusion matrix and segmentation metrics on TPU; it now uses `torch_xla.runtime`
 
+- TPU metric reduction failed with `UnpicklingError` on torch>=2.6: `xm.mesh_reduce` pickles its input, and `torch.load` now loads back only plain types by default; values are passed as floats
+
+- TPU runs did not train: the model and the optimizer were prepared in separate calls, and moving a model to XLA creates new parameters, so the optimizer kept updating the old CPU ones; on XLA they are now prepared together
+
 
 ## [22.04] - 2022-04-29
 

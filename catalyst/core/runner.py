@@ -237,6 +237,16 @@ class IRunner(ICallback, ILogger, ABC):
         self.optimizer = self._setup_optimizer(model=self.model)
         self.scheduler = self._setup_scheduler(optimizer=self.optimizer)
 
+        if (
+            self.engine.distributed_type in ("TPU", "XLA")  # XLA since accelerate 0.28
+            and isinstance(self.model, torch.nn.Module)
+            and isinstance(self.optimizer, torch.optim.Optimizer)
+        ):
+            # on XLA the moved model gets new parameters; accelerate re-points
+            # the optimizer to them only if both are prepared in one call
+            self.model, self.optimizer = self.engine.prepare(self.model, self.optimizer)
+            return
+
         if isinstance(self.model, torch.nn.Module):
             self.model = self.engine.prepare(self.model)
         elif isinstance(self.model, dict):

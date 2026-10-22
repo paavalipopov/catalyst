@@ -199,10 +199,8 @@ class DistributedXLAEngine(Engine):
 
     def mean_reduce_ddp_metrics(self, metrics: Dict) -> Dict:
         """Syncs ``metrics`` over ``world_size`` in the distributed mode."""
-        metrics = {
-            k: xm.mesh_reduce(k, v.item() if isinstance(v, torch.Tensor) else v, np.mean)
-            for k, v in metrics.items()
-        }
+        # mesh_reduce pickles values; torch>=2.6 loads back only plain types
+        metrics = {k: xm.mesh_reduce(k, float(v), np.mean) for k, v in metrics.items()}
         return metrics
 
 
